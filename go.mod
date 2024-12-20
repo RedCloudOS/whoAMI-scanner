@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.2
 	github.com/aws/smithy-go v1.22.1
 	github.com/fatih/color v1.18.0
+	github.com/kyokomi/emoji v2.2.4+incompatible
 )
 
 require (
