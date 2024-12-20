@@ -331,7 +331,13 @@ func main() {
 			_, err = file.WriteString(fmt.Sprintf("%s|%s|Verified|%s|%s|%s|%s|%s\n", ami.ID, ami.Region, ami.Public, ami.OwnerAlias, ami.OwnerID, ami.Name, ami.Description))
 		}
 		for _, ami := range selfHostedAMIs {
-			_, err = file.WriteString(fmt.Sprintf("%s|%s|Private|%s|%s|%s|%s|%s\n", ami.ID, ami.Region, ami.Public, ami.OwnerAlias, ami.OwnerID, ami.Name, ami.Description))
+			_, err = file.WriteString(fmt.Sprintf("%s|%s|Self hosted|%s|%s|%s|%s|%s\n", ami.ID, ami.Region, ami.Public, ami.OwnerAlias, ami.OwnerID, ami.Name, ami.Description))
+		}
+		for _, ami := range alllowedAMIs {
+			_, err = file.WriteString(fmt.Sprintf("%s|%s|Allowed|%s|%s|%s|%s|%s\n", ami.ID, ami.Region, ami.Public, ami.OwnerAlias, ami.OwnerID, ami.Name, ami.Description))
+		}
+		for _, ami := range trustedAMIs {
+			_, err = file.WriteString(fmt.Sprintf("%s|%s|Trusted|%s|%s|%s|%s|%s\n", ami.ID, ami.Region, ami.Public, ami.OwnerAlias, ami.OwnerID, ami.Name, ami.Description))
 		}
 		for _, ami := range unknownAMIs {
 			_, err = file.WriteString(fmt.Sprintf("%s|%s|Unknown|Unknown|Unknown|Unknown|Unknown\n", ami.ID, ami.Region))
