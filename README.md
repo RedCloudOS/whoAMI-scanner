@@ -1,26 +1,30 @@
-# 👀 whoAMI-scanner 👀
-whoAMI-scanner helps you detect the use of untrusted AMIs in your AWS account(s). It's a command line tool that was released along with blog post [whoAMI: A cloud naming confusion attack](), which highlights a novel way to get malicious AMIs to run in victim AWS accounts. The best protection for the whoAMI attack is to use AWS's [Allowed AMIs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-allowed-amis.html) feature, released December 1, 2024. However, we created `whoAMI-scanner` so you could quickly scan all of the instances running in your AWS account and find you which ones were created from **Unverified Community AMIs**.   
+# whoAMI-scanner 
+The `whoAMI-scanner` is a command-line tool that scans your AWS account(s) for instances running on untrusted Amazon Machine Images (AMIs). It was developed alongside our blog post [whoAMI: A cloud image name confusion attack](), which reveals how attackers can potentially trick victims into using malicious AMIs. 
 
-# Sample Run
+The most effective protection against the whoAMI attack is to leverage AWS's [Allowed AMIs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-allowed-amis.html) feature (released December 1, 2024). However, we created `whoAMI-scanner` to give you a quick way to identity any instancess sourced from **Unverified Community AMIs**.   
+
+# Quick Start
 ```
 ❯ whoAMI-scanner --profile cfdeploy 
 ```
+![image](https://github.com/user-attachments/assets/7d0fd3fe-7ba4-47c2-b611-95b642ced1a8)
+
 
 
 
 # Install
 
-## Using Binary Release
+## Option 1: Using Binary Release
 
 1. Download the latest binary release from the [releases page](https://github.com/Datadog/whoAMI-scanner/releases).
 2. Extract the binary and place it in your PATH.
 
-## Using `go install`
+## Option 2: Using `go install`
 
 1. [Install Go](https://golang.org/doc/install), use `go install github.com/Datadog/whoAMI-scanner.git
 2. Use `go install github.com/Datadog/whoAMI-scanner@latest` to install from the remote source
 
-## Using go clone and go build
+## Option 3: Using go clone and go build
 
 ```
 git clone https://github.com/Datadog/whoAMI-scanner.git
