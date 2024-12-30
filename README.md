@@ -62,21 +62,28 @@ For a complete list of options, run:
 Contributions are welcome! Please fork the repository and submit a pull request.  
 
 # FAQ
-Q: What is the purpose of this tool?  
+#### Q: What is the purpose of this tool?  
 A: The `whoAMI-scanner` helps you detect the use of untrusted AMIs in your AWS environment.  
 
-Q: How do I specify multiple regions?  
+#### Q: How do I specify multiple regions?  
 A: Currently you can only specify one region at a time or run the tool against all regions (default).  
 
-Q: What is meant by trusted accounts?
+#### Q: What is meant by trusted accounts?
 A: For companies using AWS organizations, a common practice is to have one account that shares trusted AMIs 
    with other accounts in the organization without making the AMIs public. The --trusted-accounts option in 
-   whoAMI-scanner allows you to specify those accounts.
+   whoAMI-scanner allows you to specify those accounts so they are not considered untrusted by the tool.
 
-Q: What is mean by allowed accounts?
+#### Q: What is mean by allowed accounts?
 A: AWS's "Allowed AMIs" is a guardrail that AWS introduced to clearly define the accounts you are allowed to use 
    AMIs from. The whoAMI-scanner tool checks to see if this guardrail is enabled in your account and if it is, it
    uses that information to determine if the AMIs in use are from allowed accounts.
 
-Q: How can I contribute to this project?  
+#### Q: What's the difference between trusted accounts and allowed accounts?
+A: "Allowed accounts" refers to the offical AWS control, "Allowed AMIs". This tool makes calls to the AWS APIs 
+   to get this info and process it within the tool. Trusted accounts are provided as user input to this tool and
+   are used to help you get better results. You should only need to use one or the other. If you are using AWS's 
+   allowed AMIs you can just lean on that. If you have not enabled allowed AMIs yet, you can use --trusted-accounts 
+   within this tool.    
+
+#### Q: How can I contribute to this project?  
 A: Fork the repository, make your changes, and submit a pull request.
