@@ -342,9 +342,8 @@ func main() {
 								continue
 							}
 
-							if verbose {
-								color.Red("[%d/%d][%s] %s is from an unverified account.", i+1, len(instanceIDs), region, amiID)
-							}
+							color.Red("[%d/%d][%s] %s is from an unverified account.", i+1, len(instanceIDs), region, amiID)
+
 							unverifiedAMIs[amiID] = ami
 						}
 					}
