@@ -286,7 +286,9 @@ func main() {
 								InstanceIds: []string{aws.ToString(instance.InstanceId)},
 							})
 						if err != nil {
-							color.Red("Error fetching AMI details for %s: %v", amiID, err)
+							color.Red("An AMI was found that is not public. "+
+								"We tried `ec2:DescribeInstanceImageMetadata` but did not have permission. "+
+								"AMI ID: %s: Error: %v", amiID, err)
 							continue
 						}
 						for _, instance := range instanceImageOutput.InstanceImageMetadata {
@@ -302,7 +304,7 @@ func main() {
 								OwnerAlias:  ptr.ToString(instance.ImageMetadata.ImageOwnerAlias),
 								OwnerID:     ptr.ToString(instance.ImageMetadata.OwnerId),
 								Name:        ptr.ToString(instance.ImageMetadata.Name),
-								Description: "Can not determine description. AMI has been deleted or made private",
+								Description: "Unable to find description. AMI has been deleted or made private",
 							}
 						}
 					}
