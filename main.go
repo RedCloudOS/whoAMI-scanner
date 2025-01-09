@@ -225,6 +225,7 @@ func main() {
 		}
 
 		for i, instanceID := range instanceIDs {
+			var publicString string
 			// Fetch instance details
 			instanceDetail, err := ec2Client.DescribeInstances(context.TODO(), &ec2.DescribeInstancesInput{
 				InstanceIds: []string{instanceID},
@@ -245,11 +246,11 @@ func main() {
 						continue
 					}
 					processedAMIs[amiID] = true
+					var ami AMI
 
 					if verbose {
 						fmt.Printf("[%d/%d][%s] %s being analyzed (Instance: %s)\n", i+1, len(instanceIDs), region, amiID, instanceID)
 					}
-
 					// Fetch AMI details
 					imageOutput, err := ec2Client.DescribeImages(context.TODO(), &ec2.DescribeImagesInput{
 						ImageIds: []string{amiID},
@@ -260,98 +261,111 @@ func main() {
 						}
 						continue
 					}
-					if len(imageOutput.Images) == 0 {
-						color.Yellow("[%d/%d][%s] %s has been deleted or made private.", i+1, len(instanceIDs), region, amiID)
-						unknownAMIs[amiID] = AMI{
-							ID:          amiID,
-							Region:      region,
-							OwnerAlias:  "Unknown",
-							Public:      "Unknown",
-							OwnerID:     "Unknown",
-							Name:        "Unknown",
-							Description: "Unknown",
+
+					if len(imageOutput.Images) > 0 {
+						for _, image := range imageOutput.Images {
+							if *image.Public {
+								publicString = "Public"
+							} else {
+								publicString = "Private"
+							}
+							ami = AMI{
+								ID:          amiID,
+								Region:      region,
+								OwnerAlias:  ptr.ToString(image.ImageOwnerAlias),
+								OwnerID:     ptr.ToString(image.OwnerId),
+								Name:        ptr.ToString(image.Name),
+								Description: ptr.ToString(image.Description),
+								Public:      publicString,
+							}
 						}
-						continue
-					}
-					var publicString string
-					for _, image := range imageOutput.Images {
-
-						if *image.Public {
-							publicString = "Public"
-						} else {
-							publicString = "Private"
+					} else {
+						// try to get the info via the instance metadata instead
+						instanceImageOutput, err := ec2Client.DescribeInstanceImageMetadata(context.TODO(),
+							&ec2.DescribeInstanceImageMetadataInput{
+								InstanceIds: []string{aws.ToString(instance.InstanceId)},
+							})
+						if err != nil {
+							color.Red("Error fetching AMI details for %s: %v", amiID, err)
+							continue
 						}
-						ami := AMI{
-							ID:          amiID,
-							Region:      region,
-							OwnerAlias:  ptr.ToString(image.ImageOwnerAlias),
-							OwnerID:     ptr.ToString(image.OwnerId),
-							Name:        ptr.ToString(image.Name),
-							Description: ptr.ToString(image.Description),
-							Public:      publicString,
-						}
-						// print the AMI details for troubleshooting
-						//fmt.Println(ami)
-
-						if ami.OwnerAlias != "" {
-							if ami.OwnerAlias == "amazon" {
-								if verbose {
-									color.Green("[%d/%d][%s] %s is a community AMI from an AWS verified account.", i+1, len(instanceIDs), region, amiID)
-								}
-								verifiedAMIs[amiID] = ami
-							} else if ami.OwnerAlias == "aws-marketplace" {
-								if verbose {
-									color.Green("[%d/%d][%s] %s is a AWS marketplace AMI from a verified account.", i+1, len(instanceIDs), region, amiID)
-								}
-								verifiedAMIs[amiID] = ami
-							} else if ami.OwnerAlias == "self" {
-								if verbose {
-									color.Green("[%d/%d][%s] %s is hosted from this account.", i+1, len(instanceIDs), region, amiID)
-								}
-								selfHostedAMIs[amiID] = ami
-							}
-						} else {
-							// The AMI has no OwnerAlias specified which means it is a community AMI or shared directly with this account.
-
-							// check if the AMI is from an allowed account
-							if allowedAMIsState == "enabled" || allowedAMIsState == "audit-mode" {
-								if contains(allowedAMIAccounts, ami.OwnerID) {
-									if verbose {
-										color.Green("[%d/%d][%s] %s is from an allowed account.", i+1, len(instanceIDs), region, amiID)
-									}
-									alllowedAMIs[amiID] = ami
-									continue // skip the rest of the checks
-								}
+						for _, instance := range instanceImageOutput.InstanceImageMetadata {
+							if *instance.ImageMetadata.IsPublic {
+								publicString = "Public"
+							} else {
+								publicString = "Private"
 							}
 
-							// check to see if the AMI is from a trusted account that the user has specified
-							if contains(trustedAccounts, ami.OwnerID) {
-								if verbose {
-									color.Green("[%d/%d][%s] %s is from a trusted account.", i+1, len(instanceIDs), region, amiID)
-								}
-								trustedAMIs[amiID] = ami
-								continue
+							ami = AMI{
+								ID:          amiID,
+								Region:      region,
+								OwnerAlias:  ptr.ToString(instance.ImageMetadata.ImageOwnerAlias),
+								OwnerID:     ptr.ToString(instance.ImageMetadata.OwnerId),
+								Name:        ptr.ToString(instance.ImageMetadata.Name),
+								Description: "Can not determine description. AMI has been deleted or made private",
 							}
-
-							// check to see if the AMI is shared privately with this account (but not trusted or allowed)
-							if ami.Public == "Private" {
-								if verbose {
-									color.Yellow("[%d/%d][%s] %s is privately shared with me but not from a trusted or allowed account.", i+1, len(instanceIDs), region, amiID)
-								}
-								privateSharedAMIs[amiID] = ami
-								continue
-							}
-
-							color.Red("[%d/%d][%s] %s is from an unverified account.", i+1, len(instanceIDs), region, amiID)
-
-							unverifiedAMIs[amiID] = ami
 						}
 					}
 
+					if ami.OwnerAlias != "" {
+						if ami.OwnerAlias == "amazon" {
+							if verbose {
+								color.Green("[%d/%d][%s] %s is a community AMI from an AWS verified account.", i+1, len(instanceIDs), region, amiID)
+							}
+							verifiedAMIs[amiID] = ami
+						} else if ami.OwnerAlias == "aws-marketplace" {
+							if verbose {
+								color.Green("[%d/%d][%s] %s is a AWS marketplace AMI from a verified account.", i+1, len(instanceIDs), region, amiID)
+							}
+							verifiedAMIs[amiID] = ami
+						} else if ami.OwnerAlias == "self" {
+							if verbose {
+								color.Green("[%d/%d][%s] %s is hosted from this account.", i+1, len(instanceIDs), region, amiID)
+							}
+							selfHostedAMIs[amiID] = ami
+						}
+					} else {
+						// The AMI has no OwnerAlias specified which means it is a community AMI or shared directly with this account.
+
+						// check if the AMI is from an allowed account
+						if allowedAMIsState == "enabled" || allowedAMIsState == "audit-mode" {
+							if contains(allowedAMIAccounts, ami.OwnerID) {
+								if verbose {
+									color.Green("[%d/%d][%s] %s is from an allowed account.", i+1, len(instanceIDs), region, amiID)
+								}
+								alllowedAMIs[amiID] = ami
+								continue // skip the rest of the checks
+							}
+						}
+
+						// check to see if the AMI is from a trusted account that the user has specified
+						if contains(trustedAccounts, ami.OwnerID) {
+							if verbose {
+								color.Green("[%d/%d][%s] %s is from a trusted account.", i+1, len(instanceIDs), region, amiID)
+							}
+							trustedAMIs[amiID] = ami
+							continue
+						}
+
+						// check to see if the AMI is shared privately with this account (but not trusted or allowed)
+						if ami.Public == "Private" {
+							if verbose {
+								color.Yellow("[%d/%d][%s] %s is privately shared with me but not from a trusted or allowed account.", i+1, len(instanceIDs), region, amiID)
+							}
+							privateSharedAMIs[amiID] = ami
+							continue
+						}
+
+						color.Red("[%d/%d][%s] %s is from an unverified account.", i+1, len(instanceIDs), region, amiID)
+
+						unverifiedAMIs[amiID] = ami
+					}
 				}
+
 			}
 		}
 	}
+
 	var enabledCount, auditModeCount, disabledCount int
 	if !allowedAMIPermissionDenied {
 		enabledCount, auditModeCount, disabledCount = countRegionsWithAllowedAmisEnabled(regions, allowedAMIStateByRegion)
@@ -365,13 +379,14 @@ func main() {
 	color.Green("| Self hosted              | AMIs from this account                                    |")
 	color.Green("| Allowed AMIs             | AMIs from an allowed account per the AWS Allowed AMIs API |")
 	color.Green("| Trusted AMIs             | AMIs from an trusted account per user input to this tool  |")
-	color.Green("| Public & Verified        | AMIs from Verified Accounts (Verified from Amazon)        |")
+	color.Green("| Verified AMIs            | AMIs from Verified Accounts (Verified by Amazon)          |")
 	color.Yellow("| Shared with me (Private) | AMIs shared privately with this account but NOT from a    |")
-	color.Yellow("|                          | trusted or allowed account. If you trust this account,    |")
-	color.Yellow("|                          | add it to your Allowed AMIs API or specify it as trusted  |")
-	color.Yellow("| Unknown                  | AMIs in use that are no longer available. The AMI may     |")
-	color.Yellow("|                          | have been deleted or made private. We can not determine   |")
-	color.Yellow("|                          | if these were served from a verified account              |")
+	color.Yellow("|                          | verified, trusted or allowed account. If you trust this   |")
+	color.Yellow("|                          | account, add it to your Allowed AMIs API or specify it as |")
+	color.Yellow("|                          | trusted in the whoAMI-scanner command line.               |")
+	//color.Yellow("| Unknown                  | AMIs in use that are no longer available. The AMI may     |")
+	//color.Yellow("|                          | have been deleted or made private. We can not determine   |")
+	//color.Yellow("|                          | if these were served from a verified account              |")
 	color.Red("| Public & Unverified      | AMIs from unverified accounts. Be cautious with these     |")
 	color.Red("|                          | unless they are from accounts you control. If not from    |")
 	color.Red("|                          | your accounts, look to replace these with AMIs from       |")
@@ -392,9 +407,9 @@ func main() {
 	color.Green("                            Self hosted AMIs: %d", len(selfHostedAMIs))
 	color.Green("                                Allowed AMIs: %d", len(alllowedAMIs))
 	color.Green("                                Trusted AMIs: %d", len(trustedAMIs))
-	color.Green("                      Public & Verified AMIs: %d", len(verifiedAMIs))
+	color.Green("                               Verified AMIs: %d", len(verifiedAMIs))
 	color.Yellow("               Shared with me (Private) AMIs: %d", len(privateSharedAMIs))
-	color.Yellow("                      AMIs w/ Unknown status: %d", len(unknownAMIs))
+	//color.Yellow("                      AMIs w/ Unknown status: %d", len(unknownAMIs))
 	color.Red("                    Public & Unverified AMIs: %d", len(unverifiedAMIs))
 
 	if len(privateSharedAMIs) > 0 {
