@@ -1,4 +1,4 @@
-module github.com/Datadog/whoAMI-scanner
+module github.com/DataDog/whoAMI-scanner
 
 go 1.23.1
 
