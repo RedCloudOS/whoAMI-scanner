@@ -24,7 +24,7 @@ The most effective protection against the whoAMI attack is to leverage AWS's [Al
 1. [Install Go](https://golang.org/doc/install), use `go install github.com/Datadog/whoAMI-scanner.git
 2. Use `go install github.com/Datadog/whoAMI-scanner@latest` to install from the remote source
 
-## Option 3: Using go clone and go build
+## Option 3: Using git clone and go build
 
 ```
 git clone https://github.com/Datadog/whoAMI-scanner.git
