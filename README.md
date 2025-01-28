@@ -74,7 +74,7 @@ A: For companies using AWS organizations, a common practice is to have one accou
    with other accounts in the organization without making the AMIs public. The --trusted-accounts option in 
    whoAMI-scanner allows you to specify those accounts so they are not considered untrusted by the tool.
 
-#### Q: What is mean by allowed accounts?
+#### Q: What is meant by allowed accounts?
 A: AWS's "Allowed AMIs" is a guardrail that AWS introduced to clearly define the accounts you are allowed to use 
    AMIs from. The whoAMI-scanner tool checks to see if this guardrail is enabled in your account and if it is, it
    uses that information to determine if the AMIs in use are from allowed accounts.
