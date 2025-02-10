@@ -29,6 +29,10 @@ var (
 	allowedAMIPermissionDenied = false
 )
 
+const (
+	AmiOwnerNameUnknown "unknown"
+)
+
 type AMI struct {
 	ID          string
 	Region      string
@@ -280,7 +284,7 @@ func main() {
 							// lookup the vendor name and use that for ownerName if it exists otherwise set it to "unknown"
 							ownerName := vendors.GetVendorNameFromAccountID(*image.OwnerId)
 							if ownerName == "" {
-								ownerName = "unknown"
+								ownerName = AmiOwnerNameUnknown
 							}
 							ami = AMI{
 								ID:          amiID,
@@ -314,7 +318,7 @@ func main() {
 							// lookup the vendor name and use that for ownerName if it exists otherwise set it to "unknown"
 							ownerName := vendors.GetVendorNameFromAccountID(*instance.ImageMetadata.OwnerId)
 							if ownerName == "" {
-								ownerName = "unknown"
+								ownerName = AmiOwnerNameUnknown
 							}
 
 							ami = AMI{
@@ -386,9 +390,10 @@ func main() {
 							continue
 						}
 						// if the ami.OwnerName is not empty or "unknown" then it is a community AMI
-						if ami.OwnerName != "" && ami.OwnerName != "unknown" {
+						if ami.OwnerName != "" && ami.OwnerName != AmiOwnerNameUnknown {
 							if verbose {
-								color.Red("[%d/%d][%s] %s is from an unverified account but is a known AWS vendor according to the community.", i+1, len(instanceIDs), region, amiID)
+								color.Yellow("[%d/%d][%s] %s is from an unverified account but is a known AWS vendor"+
+									" according to the community.", i+1, len(instanceIDs), region, amiID)
 							}
 							unverifiedButKnownAMIs[amiID] = ami
 							continue
