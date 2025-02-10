@@ -109,7 +109,7 @@ func main() {
 	if verbose {
 		fmt.Println("[*] Verbose mode enabled.")
 	} else {
-		fmt.Println("[*] Verbose mode disabled. Only questionable AMIs will be displayed.")
+		fmt.Println("[*] Verbose mode disabled. Only unknown and unverified AMIs will be displayed.")
 	}
 
 	// Fetch regions
