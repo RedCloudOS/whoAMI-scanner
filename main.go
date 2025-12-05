@@ -15,6 +15,7 @@ import (
 	"github.com/kyokomi/emoji"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -87,7 +88,8 @@ func main() {
 		}
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithSharedConfigProfile(profile), config.WithRegion("us-east-1"))
+	// Enhanced credential loading with Windows-specific debugging
+	cfg, err := loadAWSConfig(profile, verbose)
 	if err != nil {
 		color.Red("Error loading AWS config: %v", err)
 		os.Exit(1)
@@ -100,10 +102,18 @@ func main() {
 	ec2Client := ec2.NewFromConfig(cfg)
 	stsClient := sts.NewFromConfig(cfg)
 
-	// Get account ID
+	// Get account ID with enhanced error handling
 	callerIdentity, err := stsClient.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		color.Red("Error fetching account ID: %v", err)
+		if verbose {
+			color.Yellow("[DEBUG] This might be a Windows credential resolution issue.")
+			color.Yellow("[DEBUG] Try running with explicit AWS credentials:")
+			color.Yellow("[DEBUG]   set AWS_ACCESS_KEY_ID=your_access_key")
+			color.Yellow("[DEBUG]   set AWS_SECRET_ACCESS_KEY=your_secret_key")
+			color.Yellow("[DEBUG]   set AWS_SESSION_TOKEN=your_session_token (if using temporary credentials)")
+			color.Yellow("[DEBUG] Or ensure your AWS CLI credentials are properly configured.")
+		}
 		os.Exit(1)
 	}
 	_ = *callerIdentity.Account
@@ -181,19 +191,7 @@ func main() {
 				fmt.Printf("[*] [%s] Allowed AMI Accounts status: %s\n", region, red(("Disabled")))
 			}
 		}
-		//if allowedAMIsState == "enabled" || allowedAMIsState == "audit-mode" {
-		//
-		//	if len(allowedAMIAccounts) > 0 {
-		//		if verbose {
-		//			fmt.Printf("[*] [%s] Allowed AMI accounts found in region\n", region)
-		//		}
-		//	} else {
-		//		if verbose {
-		//			fmt.Printf("[*] [%s] No allowed AMIs found in region\n", region)
-		//		}
-		//	}
-		//
-		//}
+
 
 		// Fetch instances
 		instancesOutput, err := ec2Client.DescribeInstances(context.TODO(), &ec2.DescribeInstancesInput{})
@@ -651,4 +649,95 @@ func countRegionsWithAllowedAmisEnabled(regions []string, allowedAMIStateByRegio
 		}
 	}
 	return enabledCount, auditModeCount, disabledCount
+}
+
+// loadAWSConfig provides enhanced credential loading with Windows-specific debugging
+func loadAWSConfig(profile string, verbose bool) (aws.Config, error) {
+	if verbose {
+		fmt.Printf("[DEBUG] Loading AWS config for profile: %s\n", profile)
+		fmt.Printf("[DEBUG] Operating system: %s\n", runtime.GOOS)
+		fmt.Printf("[DEBUG] Architecture: %s\n", runtime.GOARCH)
+		
+		// Check for environment variables
+		if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+			fmt.Printf("[DEBUG] Found AWS_ACCESS_KEY_ID environment variable\n")
+		} else {
+			fmt.Printf("[DEBUG] No AWS_ACCESS_KEY_ID environment variable found\n")
+		}
+		
+		if os.Getenv("AWS_SECRET_ACCESS_KEY") != "" {
+			fmt.Printf("[DEBUG] Found AWS_SECRET_ACCESS_KEY environment variable\n")
+		} else {
+			fmt.Printf("[DEBUG] No AWS_SECRET_ACCESS_KEY environment variable found\n")
+		}
+		
+		if os.Getenv("AWS_SESSION_TOKEN") != "" {
+			fmt.Printf("[DEBUG] Found AWS_SESSION_TOKEN environment variable\n")
+		} else {
+			fmt.Printf("[DEBUG] No AWS_SESSION_TOKEN environment variable found\n")
+		}
+		
+		// Check AWS credentials file location
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			awsDir := filepath.Join(homeDir, ".aws")
+			credentialsFile := filepath.Join(awsDir, "credentials")
+			configFile := filepath.Join(awsDir, "config")
+			
+			if _, err := os.Stat(credentialsFile); err == nil {
+				fmt.Printf("[DEBUG] Found AWS credentials file: %s\n", credentialsFile)
+			} else {
+				fmt.Printf("[DEBUG] AWS credentials file not found: %s\n", credentialsFile)
+			}
+			
+			if _, err := os.Stat(configFile); err == nil {
+				fmt.Printf("[DEBUG] Found AWS config file: %s\n", configFile)
+			} else {
+				fmt.Printf("[DEBUG] AWS config file not found: %s\n", configFile)
+			}
+		}
+	}
+
+	// Try to load config with the specified profile
+	var cfg aws.Config
+	var err error
+	
+	// Build config options
+	configOptions := []func(*config.LoadOptions) error{
+		config.WithRegion("us-east-1"),
+	}
+	
+	if profile != "" {
+		configOptions = append(configOptions, config.WithSharedConfigProfile(profile))
+	}
+	
+	// On Windows, try to be more explicit about credential providers
+	if runtime.GOOS == "windows" && verbose {
+		fmt.Printf("[DEBUG] Using Windows-specific credential loading strategy\n")
+	}
+	
+	cfg, err = config.LoadDefaultConfig(context.TODO(), configOptions...)
+	
+	if err != nil {
+		if verbose {
+			fmt.Printf("[DEBUG] Failed to load AWS config: %v\n", err)
+			
+			// On Windows, provide specific guidance
+			if runtime.GOOS == "windows" {
+				fmt.Printf("[DEBUG] Windows-specific credential troubleshooting:\n")
+				fmt.Printf("[DEBUG] 1. Ensure AWS CLI is properly configured: aws configure\n")
+				fmt.Printf("[DEBUG] 2. Check Windows Credential Manager for stored AWS credentials\n")
+				fmt.Printf("[DEBUG] 3. Try setting environment variables explicitly\n")
+				fmt.Printf("[DEBUG] 4. Verify the AWS credentials file is in %%USERPROFILE%%\\.aws\\credentials\n")
+				fmt.Printf("[DEBUG] 5. Try running: aws sts get-caller-identity to test CLI credentials\n")
+			}
+		}
+		return cfg, err
+	}
+	
+	if verbose {
+		fmt.Printf("[DEBUG] Successfully loaded AWS config\n")
+	}
+	
+	return cfg, nil
 }
