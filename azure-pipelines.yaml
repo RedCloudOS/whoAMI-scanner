@@ -103,6 +103,6 @@ stages:
         sshEndpoint: Prod-APT-Repo-VM
         sourceFolder: '$(system.defaultWorkingDirectory)/repo'
         contents: '**'
-        targetFolder: $(targetFolder)
+        targetFolder: '/opt/apt-repo'
         overwrite: false
         cleanTargetFolder: false
