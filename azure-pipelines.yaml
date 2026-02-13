@@ -7,7 +7,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  PKG_NAME: whoami-scanner
+  PKG_NAME: whoAMI-scanner
   DEB_VERSION: 0.0.0~rolling
   DIST: redcloud
   COMPONENT: main
@@ -86,8 +86,8 @@ stages:
         gzip -kf dists/$(DIST)/$(COMPONENT)/binary-amd64/Packages
 
         cat <<EOF > dists/$(DIST)/Release
-        Origin: whoAMI-Scanner
-        Label: whoAMI-Scanner
+        Origin: whoAMI-scanner
+        Label: whoAMI-scanner
         Suite: $(DIST)
         Codename: $(DIST)
         Architectures: amd64
